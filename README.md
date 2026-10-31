@@ -1,6 +1,6 @@
 # sprout-egress
 
-Egress control for the Sprout agent. This repository holds the **allowlist of domains** Sprout's container may reach, and the **squid proxy configuration** that enforces it.
+Egress control for the Sprout agent. This repository holds the **allowlist of domains** Sprout's container may reach, and the **squid proxy** that enforces it.
 
 ## The trust model
 
@@ -10,15 +10,11 @@ The allowlist is the one piece of Sprout's infrastructure that is not under Spro
 - **Sprout proposes** (pull requests editing `allowed_domains.yaml`).
 - **The caregiver / a coalition curator grants** (review and merge).
 
-## Applying a change on the host
+## The grant flow — merge and forget
 
-After a merge, on the machine running the container:
+**Approving and merging a domain PR is the only action the caregiver ever takes.** The proxy container clones this repository at startup and polls it (default: every 60 seconds, `EGRESS_POLL_INTERVAL`). When the YAML changes, the container re-renders the flat list and reloads squid in place. Typical latency from merge to live: about a minute. No host steps, no rebuilds, no agent restarts, nothing to remember.
 
-```sh
-~/sprout-egress/reload.sh
-```
-
-This pulls, regenerates the flat domain list from the YAML, and runs `squid -k reconfigure` in the sidecar. The proxy reloads in place — no rebuild, no agent restart.
+Check what the proxy sees: `podman logs sprout-egress`. Force an immediate refresh instead of waiting for the poll: `podman restart sprout-egress`. If GitHub is unreachable, the proxy keeps the last known allowlist — fail-closed by construction.
 
 ## The allowlist schema
 
@@ -38,8 +34,9 @@ domains:
 | File | Purpose |
 | --- | --- |
 | `allowed_domains.yaml` | The allowlist, source of truth (edited by PR) |
-| `allowed_domains` | Generated flat list the proxy reads — do not edit by hand |
-| `render.sh` | Regenerates the flat list from the YAML |
-| `reload.sh` | Host-side: pull, re-render, reload the proxy |
-| `squid.conf` | Proxy configuration (includes the flat list) |
-| `Containerfile` | The proxy image: Debian + squid, nothing else |
+| `squid.conf` | Proxy configuration; includes the rendered list |
+| `render.sh` | Renders the flat list from the YAML (runs inside the container) |
+| `entrypoint.sh` | Container entry: clone, render, start squid, poll for changes |
+| `Containerfile` | The proxy image: Debian + squid + git, nothing else |
+
+The flat `allowed_domains` file is **not** in source control — it is a build artifact, rendered inside the container at startup and on every detected change.

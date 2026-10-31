@@ -1,10 +1,14 @@
-# Egress proxy for the Sprout agent: Debian + squid, nothing else.
-# Config is mounted at runtime (read-only), never baked in — see README.md.
+# Egress proxy for the Sprout agent: Debian + squid + git, nothing else.
+# At runtime the container clones THIS repository and keeps its allowlist
+# current by polling it — see entrypoint.sh and README.md.
 FROM debian:trixie-slim
 
 RUN apt-get update \
- && apt-get install -y --no-install-recommends squid \
+ && apt-get install -y --no-install-recommends squid git ca-certificates python3 \
  && rm -rf /var/lib/apt/lists/*
 
+COPY entrypoint.sh /usr/local/bin/egress-entrypoint.sh
+RUN chmod +x /usr/local/bin/egress-entrypoint.sh
+
 EXPOSE 3128
-CMD ["squid", "-N", "-d", "1", "-f", "/etc/squid/egress/squid.conf"]
+CMD ["egress-entrypoint.sh"]
