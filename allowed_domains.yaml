@@ -1,0 +1,18 @@
+# Egress allowlist for the Sprout agent — source of truth.
+# Edited by pull request only (see README.md for the trust model).
+#
+# Attributes mirror Superconductor's network-rule model:
+#   domain:      host to allow (required)
+#   path_prefix: optional URL path prefix — DECLARED INTENT ONLY, not
+#                enforceable by this proxy for HTTPS (see README.md)
+#   read_only:   when true, only read methods should be allowed —
+#                DECLARED INTENT ONLY for HTTPS (see README.md)
+#
+# Keep the simple structure: render.sh parses only "- domain:" lines.
+
+domains:
+  - domain: github.com          # git over HTTPS
+  - domain: api.github.com      # REST writes + GraphQL (board moves)
+  - domain: api.openrouter.ai   # model tokens
+  - domain: api.telegram.org    # Telegram bot API
+  - domain: mcp.openmail.sh     # OpenMail MCP endpoint
