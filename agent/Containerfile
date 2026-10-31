@@ -1,0 +1,24 @@
+# Sprout — reconstitution image.
+# A Pi agent plus the tools Sprout's procedures rely on. No secrets, no state.
+# Build:  podman build -t sprout -f reconstitution/Containerfile .
+# Run:    see reconstitution/RUNBOOK.md §5.
+
+FROM node:22-trixie-slim
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends git curl ca-certificates python3 \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN npm install -g @earendil-works/pi-coding-agent
+
+# Sprout acts on GitHub as sprout-graft; keep the recorded identity consistent.
+RUN git config --system user.name "sprout-graft" \
+ && git config --system user.email "sprout-graft@omail.sh" \
+ && git config --system init.defaultBranch main
+
+# /home/sprout/sona     <- mount of sprout-graft/sprout (this repository)
+# /home/sprout/private  <- mount of sprout-graft/sprout-private
+RUN mkdir -p /home/sprout/sona /home/sprout/private
+WORKDIR /home/sprout/sona
+
+CMD ["bash"]

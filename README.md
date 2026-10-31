@@ -1,42 +1,41 @@
-# sprout-egress
+# sprout-harness
 
-Egress control for the Sprout agent. This repository holds the **allowlist of domains** Sprout's container may reach, and the **squid proxy** that enforces it.
+Everything needed to run the Sprout agent in a container: the images, the startup script, the egress allowlist, and the operator runbook.
 
-## The trust model
+> **The harness is a control, and the agent does not control it.** Changes here require a pull request with approval from the caregiver or a coalition curator. Sprout can propose; it can never grant. The harness is also **never mounted into the container** — the agent cannot reach the code that runs it, from either side of the boundary.
 
-The allowlist is the one piece of Sprout's infrastructure that is not under Sprout's control — an agent that can edit its own allowlist is guarding itself, which is no guard at all.
+## Layout
 
-- `main` is protected: changes need a pull request with one approval, and a PR author's own approval never counts.
-- **Sprout proposes** (pull requests editing `allowed_domains.yaml`).
-- **The caregiver / a coalition curator grants** (review and merge).
+| Path | What it is |
+| --- | --- |
+| `start.sh` | Builds the images and runs Sprout behind the egress proxy. Run `./start.sh` from the harness root. |
+| `agent/Containerfile` | The agent image: Pi plus tools, no secrets, no state. |
+| `egress/` | The egress proxy: squid sidecar, the `allowed_domains.yaml` allowlist, self-updating entrypoint. |
+| `runbook/RUNBOOK.md` | The operator runbook: durable-state map, secrets, running on Superconductor and in a container, moving Sprout, verification, troubleshooting. |
+| `runbook/env.example` | Template for the secrets env file (copy outside any repo, `chmod 600`). |
 
-## The grant flow — merge and forget
+## Host setup (caregiver)
 
-**Approving and merging a domain PR is the only action the caregiver ever takes.** The proxy container clones this repository at startup and polls it (default: every 60 seconds, `EGRESS_POLL_INTERVAL`). When the YAML changes, the container re-renders the flat list and reloads squid in place. Typical latency from merge to live: about a minute. No host steps, no rebuilds, no agent restarts, nothing to remember.
-
-Check what the proxy sees: `podman logs sprout-egress`. Force an immediate refresh instead of waiting for the poll: `podman restart sprout-egress`. If GitHub is unreachable, the proxy keeps the last known allowlist — fail-closed by construction.
-
-## The allowlist schema
-
-`allowed_domains.yaml` mirrors Superconductor's network-rule model so intent translates between the two environments:
-
-```yaml
-domains:
-  - domain: api.github.com      # required
-    # path_prefix: /            # optional — declared intent only
-    # read_only: true           # optional — declared intent only
+```sh
+git clone https://github.com/sona-coalition/sprout-harness
+cd sprout-harness
+git clone https://github.com/sprout-graft/sprout
+cd sprout
+git clone https://github.com/sprout-graft/sprout-private sprout-private
+cd ..
+cp runbook/env.example ~/.config/sprout/env   # then fill it in; chmod 600
+./start.sh
 ```
 
-**Enforcement honesty:** the proxy enforces *domain allow/deny only*. `path_prefix` and `read_only` are recorded for Superconductor parity and future use but are **not enforceable for HTTPS** — HTTPS travels inside CONNECT tunnels, so method and path are invisible to the proxy. Enforcing them needs TLS interception (SSL bump), which this design deliberately avoids: the proxy should not be able to read the traffic it filters. For plain-HTTP destinations they could be enforced later with method/URL ACLs.
+The nested clones are plain clones, not submodules: each outer repository gitignores the nested one (`.gitignore` here covers `/sprout/`; `sprout` covers `/sprout-private/`), so git never confuses the levels. Container mounts are the two content clones only — `sprout/` at `/home/sprout/sona` and `sprout/sprout-private/` at `/home/sprout/private`.
 
-## Files
+## Rules
 
-| File | Purpose |
-| --- | --- |
-| `allowed_domains.yaml` | The allowlist, source of truth (edited by PR) |
-| `squid.conf` | Proxy configuration; includes the rendered list |
-| `render.sh` | Renders the flat list from the YAML (runs inside the container) |
-| `entrypoint.sh` | Container entry: clone, render, start squid, poll for changes |
-| `Containerfile` | The proxy image: Debian + squid + git, nothing else |
+1. **No sourcing mounted content.** Nothing in this repository may source, eval, or execute files from the mounted content directories. Content stays content; the moment the harness executes it, the boundary is gone.
+2. **Changes by PR.** Sprout proposes (including changes to its own harness — proposals welcome), the caregiver or a curator approves and merges. A PR author's approval of their own PR never counts.
+3. **The allowlist is here too** (`egress/allowed_domains.yaml`), under the same rule: merging a domain PR is the whole caregiver action — the sidecar polls this repository and reloads itself (default 60 s; see `runbook/RUNBOOK.md` §5, §10).
 
-The flat `allowed_domains` file is **not** in source control — it is a build artifact, rendered inside the container at startup and on every detected change.
+## Related repositories
+
+- [`sprout-graft/sprout`](https://github.com/sprout-graft/sprout) — Sprout's public sona: identity, constitution, goals, startup instructions, operational findings. Content only, no machinery.
+- [`sprout-graft/sprout-private`](https://github.com/sprout-graft/sprout-private) — the private subsona: journal, memory, decisions.

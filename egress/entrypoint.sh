@@ -7,13 +7,14 @@
 # reloads squid in place. The caregiver's only action is the merge.
 set -eu
 
-SRC=/srv/egress
+SRC=/srv/harness
+CFG="$SRC/egress"
 OUT=/etc/squid/allowed_domains
-REPO="${EGRESS_REPO:-https://github.com/sona-coalition/sprout-egress.git}"
+REPO="${EGRESS_REPO:-https://github.com/sona-coalition/sprout-harness.git}"
 INTERVAL="${EGRESS_POLL_INTERVAL:-60}"
 
 render() {
-    "$SRC/render.sh" "$SRC/allowed_domains.yaml" > "$OUT.new"
+    "$CFG/render.sh" "$CFG/allowed_domains.yaml" > "$OUT.new"
     mv "$OUT.new" "$OUT"
 }
 
@@ -22,13 +23,13 @@ git clone -q --depth 1 "$REPO" "$SRC" 2>/dev/null || git -C "$SRC" pull -q --ff-
 render
 
 echo "egress: starting squid (poll every ${INTERVAL}s)"
-squid -N -d 1 -f "$SRC/squid.conf" &
+squid -N -d 1 -f "$CFG/squid.conf" &
 
-CUR=$(md5sum "$SRC/allowed_domains.yaml" | cut -d' ' -f1)
+CUR=$(md5sum "$CFG/allowed_domains.yaml" | cut -d' ' -f1)
 while true; do
     sleep "$INTERVAL"
     git -C "$SRC" pull -q --ff-only 2>/dev/null || continue
-    NEW=$(md5sum "$SRC/allowed_domains.yaml" | cut -d' ' -f1)
+    NEW=$(md5sum "$CFG/allowed_domains.yaml" | cut -d' ' -f1)
     [ "$NEW" = "$CUR" ] && continue
     CUR=$NEW
     if render && squid -k reconfigure; then
