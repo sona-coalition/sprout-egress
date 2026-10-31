@@ -1,24 +1,46 @@
-# Sprout — reconstitution image.
-# A Pi agent plus the tools Sprout's procedures rely on. No secrets, no state.
-# Build:  podman build -t sprout -f reconstitution/Containerfile .
-# Run:    see reconstitution/RUNBOOK.md §5.
+# ============================================================================
+# agent/Containerfile — the image Sprout runs inside.
+#
+# Think of an image as a sealed, reproducible mini-computer: same tools,
+# same versions, every time, on any host. This one contains the Pi agent
+# and the command-line tools Sprout's procedures rely on. It contains NO
+# secrets and NO state — those arrive at runtime (env file and mounts).
+#
+# Build (start.sh does this):  podman build -t sprout -f agent/Containerfile agent
+# ============================================================================
 
+# Base layer: Debian 13 ("trixie"), slim variant, with Node.js 22 included.
+# Small, current, and from a well-known source (Docker's official node images).
 FROM node:22-trixie-slim
 
+# Tools Sprout uses directly:
+#   git            - commits, branches, pushes (its record-keeping)
+#   curl           - calling REST/GraphQL/MCP endpoints
+#   ca-certificates- so HTTPS connections can be verified
+#   python3        - small utilities (e.g. ontology checks, render scripts)
 RUN apt-get update \
  && apt-get install -y --no-install-recommends git curl ca-certificates python3 \
  && rm -rf /var/lib/apt/lists/*
 
+# The Pi coding agent itself, installed globally from npm.
 RUN npm install -g @earendil-works/pi-coding-agent
 
-# Sprout acts on GitHub as sprout-graft; keep the recorded identity consistent.
+# Git identity: Sprout acts on GitHub as "sprout-graft", and its commits and
+# pull requests are recorded as sprout-graft <sprout-graft@omail.sh>.
+# Setting this system-wide in the image keeps that identity consistent
+# without any per-run configuration. Also default new repos to branch "main".
 RUN git config --system user.name "sprout-graft" \
  && git config --system user.email "sprout-graft@omail.sh" \
  && git config --system init.defaultBranch main
 
-# /home/sprout/sona     <- mount of sprout-graft/sprout (this repository)
-# /home/sprout/private  <- mount of sprout-graft/sprout-private
+# The two mount points start.sh binds to:
+#   /home/sprout/sona     <- the sprout-graft/sprout repository (identity)
+#   /home/sprout/private  <- the sprout-graft/sprout-private repository (memory)
+# Creating them here just means the directories exist even if nothing is
+# mounted (start.sh refuses to run without the mounts anyway).
 RUN mkdir -p /home/sprout/sona /home/sprout/private
 WORKDIR /home/sprout/sona
 
+# When the container starts interactively, give the operator a shell.
+# The operator (or a runbook procedure) then runs `pi` themselves.
 CMD ["bash"]

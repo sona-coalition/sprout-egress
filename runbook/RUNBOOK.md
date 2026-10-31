@@ -69,7 +69,7 @@ sprout-harness/            <- this repository (never mounted)
 
 The supported path is `./start.sh` from the harness root — it is short and meant to be read. It:
 
-1. Reads secrets from an **env file** (default `~/.config/sprout/env`, override with `SPROUT_ENV`; template in `runbook/env.example`, permissions `600`, *never* exported into the shell, so values stay out of shell history and `ps`). Podman's `--env-file` passes them without echoing.
+1. Reads secrets from an **env file** — `./.env` in the harness root if present (gitignored, and `start.sh` refuses to run if it is ever tracked by git), otherwise `~/.config/sprout/env`; `SPROUT_ENV` overrides both. Template in `runbook/env.example`, permissions `600`, *never* exported into the shell, so values stay out of shell history and `ps`. Podman's `--env-file` passes them without echoing.
 2. Builds both images from this repository: the agent (`agent/Containerfile`) and the egress proxy (`egress/`).
 3. Creates an internal container network with no route out, starts the egress proxy on it, and runs the agent with `HTTP(S)_PROXY` pointing at the proxy — so the allowlist is enforced, not advisory. This mirrors the Superconductor sandbox's model and guards the realistic risks: exfiltration of the four injected secrets via prompt injection, and arbitrary downloads.
 4. Mounts `sprout/` read-write at `/home/sprout/sona` and `sprout/sprout-private/` at `/home/sprout/private` — and nothing else. **The harness itself is never mounted**: the agent cannot reach the code that runs it. **The private mount is mandatory** — without it the instance cannot see the LIVE lock (§6), and an instance that cannot see the lock is a split-brain waiting to happen. `start.sh` refuses to run without it.
