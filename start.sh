@@ -63,7 +63,13 @@ fi
 # The agent reads its identity and memory from these two repositories.
 # Missing? Clone them. Present? Pull the latest. Either way the operator
 # never has to think about the nested structure.
+# Note: `git -C <dir> ...` runs git as if it were started inside <dir> —
+# handy for scripting the nested clones without cd-ing around.
 if [ ! -d sprout/.git ]; then
+  # git clone refuses a non-empty directory; catch that case with a
+  # clearer message first (e.g. a half-deleted earlier attempt).
+  [ -z "$(ls -A sprout 2>/dev/null)" ] \
+    || fail "sprout/ exists but is not a git clone — move it aside and re-run"
   echo "Cloning sprout-graft/sprout..."
   git clone -q https://github.com/sprout-graft/sprout sprout \
     || fail "could not clone sprout-graft/sprout"
@@ -77,6 +83,8 @@ fi
 # the script fetches it for you. Cloning a private repo may ask for your
 # GitHub credentials (the caregiver is a collaborator).
 if [ ! -d sprout/sprout-private/.git ]; then
+  [ -z "$(ls -A sprout/sprout-private 2>/dev/null)" ] \
+    || fail "sprout/sprout-private/ exists but is not a git clone — move it aside and re-run"
   echo "Cloning sprout-graft/sprout-private..."
   git clone -q https://github.com/sprout-graft/sprout-private sprout/sprout-private \
     || fail "could not clone sprout-graft/sprout-private (needs the caregiver's GitHub credentials)"

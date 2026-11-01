@@ -28,24 +28,12 @@ For the operator who just needs the commands. Each procedure lists its assumptio
 
 ### B. Start Sprout in a container
 
-*Assumes: a Unix shell; podman installed and, on macOS, the podman machine started (`podman machine start`); git; the four secrets available to put in the env file (§4).*
+*Assumes: a Unix shell; podman installed and, on macOS, the podman machine started (`podman machine start`); git; this repository cloned (`git clone https://github.com/sona-coalition/sprout-harness`); and a secrets env file created (in the clone: `cp runbook/env.example .env`, fill in the four values, `chmod 600` — §4).*
 
-First time only:
-
-```sh
-git clone https://github.com/sona-coalition/sprout-harness
-cd sprout-harness
-cp runbook/env.example .env   # then edit .env: fill in the four values, chmod 600
-```
-
-Every time:
-
-```sh
-cd sprout-harness
-./start.sh
-```
-
-`start.sh` clones the content repositories itself if they are missing, and pulls the latest versions if they are present — the operator never assembles the nested structure by hand. Inside the container: `pi`. Verify per §9.
+1. Open a terminal and navigate to the `sprout-harness` directory.
+2. Run `./start.sh` — it clones the content repositories itself if they are missing, and pulls the latest versions if they are present.
+3. Inside the container, run `pi`.
+4. Verify per §9. If anything fails, see §10.
 
 ### C. Move Sprout between hosts
 
