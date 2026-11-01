@@ -65,7 +65,13 @@ fi
 # never has to think about the nested structure.
 # Note: `git -C <dir> ...` runs git as if it were started inside <dir> —
 # handy for scripting the nested clones without cd-ing around.
-if [ ! -d sprout/.git ]; then
+# The decision is "pull if it is a repository, clone if it is not":
+# `rev-parse` is the robust test (it works whether .git is a directory
+# or a gitfile), so an existing repo always gets a pull, never a clone.
+if git -C sprout rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  git -C sprout pull -q --ff-only \
+    || fail "sprout/ has local changes or has diverged — resolve by hand"
+else
   # git clone refuses a non-empty directory; catch that case with a
   # clearer message first (e.g. a half-deleted earlier attempt).
   [ -z "$(ls -A sprout 2>/dev/null)" ] \
@@ -73,24 +79,21 @@ if [ ! -d sprout/.git ]; then
   echo "Cloning sprout-graft/sprout..."
   git clone -q https://github.com/sprout-graft/sprout sprout \
     || fail "could not clone sprout-graft/sprout"
-else
-  git -C sprout pull -q --ff-only \
-    || fail "sprout/ has local changes or has diverged — resolve by hand"
 fi
 
 # The private subsona holds the LIVE lock. Running without it would risk two
 # live instances (split-brain; see runbook §7), so this is mandatory — but
 # the script fetches it for you. Cloning a private repo may ask for your
 # GitHub credentials (the caregiver is a collaborator).
-if [ ! -d sprout/sprout-private/.git ]; then
+if git -C sprout/sprout-private rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  git -C sprout/sprout-private pull -q --ff-only \
+    || fail "sprout/sprout-private/ has local changes or has diverged — resolve by hand"
+else
   [ -z "$(ls -A sprout/sprout-private 2>/dev/null)" ] \
     || fail "sprout/sprout-private/ exists but is not a git clone — move it aside and re-run"
   echo "Cloning sprout-graft/sprout-private..."
   git clone -q https://github.com/sprout-graft/sprout-private sprout/sprout-private \
     || fail "could not clone sprout-graft/sprout-private (needs the caregiver's GitHub credentials)"
-else
-  git -C sprout/sprout-private pull -q --ff-only \
-    || fail "sprout/sprout-private/ has local changes or has diverged — resolve by hand"
 fi
 
 # --- 3. Build the images ----------------------------------------------------
