@@ -1,0 +1,9 @@
+# macOS host debris — add this line to every .gitignore in every repository
+# (some humans will be using a Mac).
+.DS_Store
+
+# Nested clones in the harness layout
+/sprout/
+
+# Secrets never belong here; .env lives at the root but is never committed
+.env

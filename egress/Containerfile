@@ -1,0 +1,33 @@
+# ============================================================================
+# egress/Containerfile — the egress proxy image.
+#
+# This is the guard at the gate. The agent container has no route to the
+# internet; this proxy is its only way out, and the proxy only allows
+# connections to the domains in the allowlist (egress/allowed_domains.yaml).
+#
+# The image is deliberately boring: Debian + squid (a venerable, well-audited
+# forwarding proxy) + git (so the container can keep its allowlist current
+# by polling the sprout-harness repository). No third-party images to audit.
+#
+# Config is NOT baked in. At runtime, entrypoint.sh clones the sprout-harness
+# repo and reads squid.conf and the allowlist from it — so the caregiver can
+# change the rules by merging a PR, without rebuilding anything.
+#
+# Build (start.sh does this):  podman build -t sprout-egress -f egress/Containerfile egress
+# ============================================================================
+
+FROM debian:trixie-slim
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends squid git ca-certificates python3 \
+ && rm -rf /var/lib/apt/lists/*
+
+# The container's behaviour at startup (clone config, start squid, poll for
+# changes) lives in this one script, which is copied into the image.
+COPY entrypoint.sh /usr/local/bin/egress-entrypoint.sh
+RUN chmod +x /usr/local/bin/egress-entrypoint.sh
+
+# squid listens for proxy connections on port 3128.
+EXPOSE 3128
+
+CMD ["egress-entrypoint.sh"]
