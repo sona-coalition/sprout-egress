@@ -96,6 +96,32 @@ else
     || fail "could not clone sprout-graft/sprout-private (needs the caregiver's GitHub credentials)"
 fi
 
+# --- 2.5 The LIVE lock, enforced -------------------------------------------
+# The agent checks the lock itself (AGENTS.md), but instructions can be
+# skimmed — proven 2026-11-01, when a casually greeted instance answered
+# "Hi" without ever looking. So the harness checks too: a fresh LIVE lock
+# from another live host stops the run here, before anything is built.
+LOCK=sprout/sprout-private/LIVE
+if [ -f "$LOCK" ]; then
+  lock_host=$(sed -n 's/^host:[[:space:]]*//p' "$LOCK" | head -1)
+  lock_started=$(sed -n 's/^started:[[:space:]]*//p' "$LOCK" | head -1)
+  lock_epoch=$(sed -n 's/^started_epoch:[[:space:]]*//p' "$LOCK" | head -1)
+  now_epoch=$(date -u +%s)
+  if [ -z "$lock_epoch" ] && [ -n "$lock_started" ]; then
+    # Older locks have only the ISO timestamp; parse it (GNU date, then BSD).
+    lock_epoch=$(date -u -d "$lock_started" +%s 2>/dev/null \
+      || date -u -j -f "%Y-%m-%dT%H:%M:%SZ" "$lock_started" +%s 2>/dev/null \
+      || echo "")
+  fi
+  [ -n "$lock_epoch" ] \
+    || fail "LIVE lock has no readable start time (host: ${lock_host:-unknown}). Treating as fresh; see runbook §10 for the override."
+  age=$(( now_epoch - lock_epoch ))
+  if [ "$age" -lt 14400 ]; then
+    fail "LIVE lock is fresh: host '${lock_host:-unknown}', started ${lock_started:-unknown} (${age}s ago). Another Sprout is live — stop it first, or override per runbook §10."
+  fi
+  echo "start.sh: stale LIVE lock (${age}s old) — taking over."
+fi
+
 # --- 3. Build the images ----------------------------------------------------
 # -q keeps the output quiet; podman caches layers, so rebuilds are fast.
 echo "Building images..."
