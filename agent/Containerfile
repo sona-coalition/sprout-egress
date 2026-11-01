@@ -18,9 +18,16 @@ FROM node:22-trixie-slim
 #   curl           - calling REST/GraphQL/MCP endpoints
 #   ca-certificates- so HTTPS connections can be verified
 #   python3        - small utilities (e.g. ontology checks, render scripts)
+#   fd-find, ripgrep - pi's file-search companions. Installing them here,
+#     from the Debian archive (same trust as the base image), means pi does
+#     not try to download them at runtime — which would need a whole
+#     user-content CDN (githubusercontent.com) in the egress allowlist.
+#     Debian names the binaries fdfind and rg; add the names pi looks for.
 RUN apt-get update \
- && apt-get install -y --no-install-recommends git curl ca-certificates python3 \
- && rm -rf /var/lib/apt/lists/*
+ && apt-get install -y --no-install-recommends git curl ca-certificates python3 fd-find ripgrep \
+ && rm -rf /var/lib/apt/lists/* \
+ && ln -s /usr/bin/fdfind /usr/local/bin/fd \
+ && ln -s /usr/bin/rg /usr/local/bin/ripgrep
 
 # The Pi coding agent itself, installed globally from npm.
 RUN npm install -g @earendil-works/pi-coding-agent
