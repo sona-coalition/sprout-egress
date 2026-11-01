@@ -65,7 +65,7 @@ fi
 
 # The private subsona holds the LIVE lock. Without it this instance cannot
 # know whether another Sprout is already running elsewhere — running anyway
-# would risk two live instances (split-brain; see runbook §6).
+# would risk two live instances (split-brain; see runbook §7).
 [ -d sprout/sprout-private/.git ] || fail "missing private subsona:
   git clone https://github.com/sprout-graft/sprout-private sprout/sprout-private"
 
@@ -101,6 +101,8 @@ podman run -d --name sprout-egress \
 #   --memory/--cpus/--pids    a runaway agent cannot take the host down.
 #   -v ... :Z                 mounts the two content clones read-write,
 #                             relabelled so SELinux hosts allow access.
+#                             Mount paths MIRROR the host layout — same
+#                             path inside the container as outside it.
 # `exec` replaces this script with the podman process, so stopping the
 # container (Ctrl-C) ends the script cleanly. --rm tidies up on exit.
 echo "Starting Sprout (memory ${MEMORY_LIMIT}, cpus ${CPU_LIMIT})..."
@@ -113,6 +115,6 @@ exec podman run -it --rm \
   -e http_proxy=http://sprout-egress:3128 \
   -e https_proxy=http://sprout-egress:3128 \
   --memory "$MEMORY_LIMIT" --cpus "$CPU_LIMIT" --pids-limit 512 \
-  -v "$PWD/sprout:/home/sprout/sona:Z" \
-  -v "$PWD/sprout/sprout-private:/home/sprout/private:Z" \
+  -v "$PWD/sprout:/home/sprout/sprout:Z" \
+  -v "$PWD/sprout/sprout-private:/home/sprout/sprout/sprout-private:Z" \
   sprout

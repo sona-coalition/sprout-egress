@@ -27,7 +27,7 @@ cp runbook/env.example ~/.config/sprout/env   # then fill it in; chmod 600
 ./start.sh
 ```
 
-The nested clones are plain clones, not submodules: each outer repository gitignores the nested one (`.gitignore` here covers `/sprout/`; `sprout` covers `/sprout-private/`), so git never confuses the levels. Container mounts are the two content clones only — `sprout/` at `/home/sprout/sona` and `sprout/sprout-private/` at `/home/sprout/private`.
+The nested clones are plain clones, not submodules: each outer repository gitignores the nested one (`.gitignore` here covers `/sprout/`; `sprout` covers `/sprout-private/`), so git never confuses the levels. Container mounts are the two content clones only, and they **mirror the host layout** — `sprout-harness/sprout/` on the host is `/home/sprout/sprout` in the container, and `sprout-harness/sprout/sprout-private/` is `/home/sprout/sprout/sprout-private`. One rule, no translation: same path inside as outside.
 
 ## Rules
 

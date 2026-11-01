@@ -33,13 +33,14 @@ RUN git config --system user.name "sprout-graft" \
  && git config --system user.email "sprout-graft@omail.sh" \
  && git config --system init.defaultBranch main
 
-# The two mount points start.sh binds to:
-#   /home/sprout/sona     <- the sprout-graft/sprout repository (identity)
-#   /home/sprout/private  <- the sprout-graft/sprout-private repository (memory)
+# The two mount points start.sh binds to. They MIRROR the host layout —
+# the rule is "same path inside the container as outside it":
+#   host sprout-harness/sprout/                -> /home/sprout/sprout
+#   host sprout-harness/sprout/sprout-private/ -> /home/sprout/sprout/sprout-private
 # Creating them here just means the directories exist even if nothing is
 # mounted (start.sh refuses to run without the mounts anyway).
-RUN mkdir -p /home/sprout/sona /home/sprout/private
-WORKDIR /home/sprout/sona
+RUN mkdir -p /home/sprout/sprout/sprout-private
+WORKDIR /home/sprout/sprout
 
 # When the container starts interactively, give the operator a shell.
 # The operator (or a runbook procedure) then runs `pi` themselves.
