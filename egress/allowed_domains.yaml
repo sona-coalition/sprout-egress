@@ -13,6 +13,11 @@
 domains:
   - domain: github.com          # git over HTTPS
   - domain: api.github.com      # REST writes + GraphQL (board moves)
-  - domain: api.openrouter.ai   # model tokens
+  - domain: openrouter.ai       # model tokens (the live API host; verified
+                                # 2026-11-01 that api.openrouter.ai does not exist)
+                                # Note: NO githubusercontent.com here, deliberately.
+                                # It is a user-content CDN — too broad. pi's fd/ripgrep
+                                # companions are installed from Debian at image build
+                                # time instead (see agent/Containerfile).
   - domain: api.telegram.org    # Telegram bot API
   - domain: mcp.openmail.sh     # OpenMail MCP endpoint
