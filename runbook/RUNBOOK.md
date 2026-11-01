@@ -23,7 +23,7 @@ For the operator who just needs the commands. Each procedure lists its assumptio
 *Assumes: a Superconductor workspace with the `sprout` project configured (§5), and the four secrets present in project credentials (§4).*
 
 1. Open the `sprout` project and start any chat (or open an existing one).
-2. Send a wake message, e.g. *"Wake: read `AGENTS.md` in `sprout-graft/sprout` and the latest journal entries in the private subsona, and report what you were doing."*
+2. Send a wake message, e.g. *"Wake: take the LIVE lock (§7), read `AGENTS.md` in `sprout-graft/sprout` and the latest journal entries in the private subsona, and report what you were doing."*
 3. Verify per §9.
 
 ### B. Start Sprout in a container
@@ -121,7 +121,9 @@ Notes:
 
 ## 7. One live Sprout (concurrency rule)
 
-Exactly one Sprout instance is live at a time, across every host. This generalizes the only-agent rule (§8) from the Superconductor project to Sprout as a whole.
+Exactly one Sprout instance is live at a time, across every host — a Superconductor session counts as an instance exactly as a container run does. This generalizes the only-agent rule (§8) from the Superconductor project to Sprout as a whole.
+
+**Every instance takes the lock when it wakes and releases it when it stops.** A Superconductor session locks at wake and releases when the turn ends (its sandbox clone of the private repo standing in for the container's mount); a cut-off turn — e.g. an OpenRouter 402 — leaves a stale lock, which the 4-hour rule and the §10 override cover, exactly as a container crash does.
 
 Why it is a rule and not a preference:
 
@@ -132,7 +134,8 @@ Why it is a rule and not a preference:
 The **LIVE lock** in `sprout-private` (file `LIVE` at the root):
 
 - A starting instance writes `LIVE` with host, start time (UTC) and how to reach the caregiver; a cleanly stopping instance deletes it.
-- **Startup rule:** before doing anything else, fetch the private repo, `git pull --rebase`, then read `LIVE`. Absent, or older than **4 hours** — take over: write your own lock and proceed. Present and fresh — you are not the live instance: stop, and tell the caregiver where the lock says the live one runs. (The entity's `AGENTS.md` carries this rule.)
+- **Startup rule (every instance, any host):** before doing anything else, fetch the private repo, `git pull --rebase`, then read `LIVE`. Absent, or older than **4 hours** — take over: write your own lock and proceed. Present and fresh — you are not the live instance: stop, and tell the caregiver where the lock says the live one runs. (The reconstituted entity's `AGENTS.md` carries this rule; Superconductor sessions adopt it at wake — see §2A.)
+- **Compliance note:** the lock is a coordination convention the instances *follow*, not a mechanism that stops them. A fresh instance that ignores its startup instructions could sail through it; the live test of 2026-11-01 was run precisely to learn that. If compliance proves unreliable, the check can be moved into `start.sh`, which cannot be skimmed.
 - A live instance refreshes its lock's timestamp whenever it commits anything, so an active instance's lock stays naturally fresh; a lock that is hours old *and* a repo with no recent activity together indicate a dead instance.
 - A crash leaves a stale lock; the 4-hour rule plus the caregiver's confirmation covers it (override procedure in §10).
 - If split-brain happens anyway: stop both, the caregiver picks the live one, the other commits its state and stands down. Re-fetch anything lost: email threads marked read are still in the inbox (mark-read deletes nothing); Telegram updates consumed past the offset are gone, so the caregiver re-sends anything important.
