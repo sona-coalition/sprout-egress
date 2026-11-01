@@ -40,6 +40,13 @@ RUN git config --system user.name "sprout-graft" \
  && git config --system user.email "sprout-graft@omail.sh" \
  && git config --system init.defaultBranch main
 
+# Credentials: plain `git push`/`pull`/`clone` over HTTPS must work without
+# prompts. This helper answers git's credential questions from the GH_TOKEN
+# environment variable AT CALL TIME — nothing secret is stored in the image;
+# the token still arrives only through the env file. Found missing by the
+# first container run (2026-11-01: commit worked, push prompted and failed).
+RUN git config --system credential.helper '!f() { echo "username=x-access-token"; echo "password=$GH_TOKEN"; }; f'
+
 # The two mount points start.sh binds to. They MIRROR the host layout —
 # the rule is "same path inside the container as outside it":
 #   host sprout-harness/sprout/                -> /home/sprout/sprout
