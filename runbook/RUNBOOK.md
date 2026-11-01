@@ -30,18 +30,22 @@ For the operator who just needs the commands. Each procedure lists its assumptio
 
 *Assumes: a Unix shell; podman installed and, on macOS, the podman machine started (`podman machine start`); git; the four secrets available to put in the env file (§4).*
 
+First time only:
+
 ```sh
 git clone https://github.com/sona-coalition/sprout-harness
 cd sprout-harness
-git clone https://github.com/sprout-graft/sprout
-cd sprout
-git clone https://github.com/sprout-graft/sprout-private sprout-private
-cd ..
 cp runbook/env.example .env   # then edit .env: fill in the four values, chmod 600
+```
+
+Every time:
+
+```sh
+cd sprout-harness
 ./start.sh
 ```
 
-Inside the container: `pi`. Verify per §9.
+`start.sh` clones the content repositories itself if they are missing, and pulls the latest versions if they are present — the operator never assembles the nested structure by hand. Inside the container: `pi`. Verify per §9.
 
 ### C. Move Sprout between hosts
 
@@ -115,7 +119,7 @@ The supported path is `./start.sh` from the harness root — it is short, commen
 1. Reads secrets from an **env file** — `./.env` in the harness root if present (gitignored; `start.sh` refuses to run if it is ever tracked by git), otherwise `~/.config/sprout/env`; `SPROUT_ENV` overrides both. Template in `runbook/env.example`, permissions `600`, *never* exported into the shell, so values stay out of shell history and `ps`. Podman's `--env-file` passes them without echoing.
 2. Builds both images from this repository: the agent (`agent/Containerfile`) and the egress proxy (`egress/`).
 3. Creates an internal container network with no route out, starts the egress proxy on it, and runs the agent with `HTTP(S)_PROXY` pointing at the proxy — so the allowlist is enforced, not advisory. This mirrors the Superconductor sandbox's model and guards the realistic risks: exfiltration of the four injected secrets via prompt injection, and arbitrary downloads.
-4. Mounts `sprout/` and `sprout/sprout-private/` — and nothing else, and **at the same paths as the host**: `sprout-harness/sprout/` on the host is `/home/sprout/sprout` in the container, and `sprout-harness/sprout/sprout-private/` is `/home/sprout/sprout/sprout-private`. One rule, no translation: same path inside as outside. **The harness itself is never mounted**: the agent cannot reach the code that runs it. **The private mount is mandatory** — without it the instance cannot see the LIVE lock (§7), and an instance that cannot see the lock is a split-brain waiting to happen. `start.sh` refuses to run without it.
+4. Mounts `sprout/` and `sprout/sprout-private/` — and nothing else, and **at the same paths as the host**: `sprout-harness/sprout/` on the host is `/home/sprout/sprout` in the container, and `sprout-harness/sprout/sprout-private/` is `/home/sprout/sprout/sprout-private`. One rule, no translation: same path inside as outside. **The harness itself is never mounted**: the agent cannot reach the code that runs it. **The private mount is mandatory** — without it the instance cannot see the LIVE lock (§7), and an instance that cannot see the lock is a split-brain waiting to happen. `start.sh` clones it if it is missing and refuses to run if it cannot get it.
 5. Caps resources (`SPROUT_MEM` default `6g`, `SPROUT_CPUS` default `3`, a PID limit) so a runaway loop cannot take the host down with it. On macOS these apply inside the podman machine; size the machine itself with `podman machine set --cpus N --memory MB`.
 
 **The egress allowlist is governed by the caregiver, not by Sprout.** It lives in this repository (`egress/allowed_domains.yaml`), `main` protected (pull request + one approval; a PR author's own approval never counts, so Sprout cannot self-grant). Sprout proposes domains by pull request; the caregiver merges. **Merging is the whole job**: the sidecar clones this repository itself and polls it (default 60 s); on change it re-renders and reloads squid in place. No host steps, no rebuilds, no agent restarts. An agent that could edit its own allowlist would be guarding itself, which is no guard at all.

@@ -5,7 +5,8 @@
 # Run it from the harness root:   ./start.sh
 #
 # What this script does, in order:
-#   1. Checks the things it needs are in place (env file, content clones).
+#   1. Checks the secrets file, and clones or pulls the content repositories
+#      itself — the operator never assembles them by hand.
 #   2. Builds two container images: the agent and the egress proxy.
 #   3. Creates two container networks: one with no route out, one with access.
 #   4. Starts the egress proxy attached to both networks.
@@ -58,16 +59,31 @@ if [ "$ENV_FILE" = "./.env" ] && git ls-files --error-unmatch .env >/dev/null 2>
   fail ".env is tracked by git — secrets must never be committed. Remove it from git history first."
 fi
 
-# --- 2. Check the content clones -------------------------------------------
+# --- 2. Ensure the content clones -------------------------------------------
 # The agent reads its identity and memory from these two repositories.
-[ -d sprout/.git ] || fail "missing content clone:
-  git clone https://github.com/sprout-graft/sprout"
+# Missing? Clone them. Present? Pull the latest. Either way the operator
+# never has to think about the nested structure.
+if [ ! -d sprout/.git ]; then
+  echo "Cloning sprout-graft/sprout..."
+  git clone -q https://github.com/sprout-graft/sprout sprout \
+    || fail "could not clone sprout-graft/sprout"
+else
+  git -C sprout pull -q --ff-only \
+    || fail "sprout/ has local changes or has diverged — resolve by hand"
+fi
 
-# The private subsona holds the LIVE lock. Without it this instance cannot
-# know whether another Sprout is already running elsewhere — running anyway
-# would risk two live instances (split-brain; see runbook §7).
-[ -d sprout/sprout-private/.git ] || fail "missing private subsona:
-  git clone https://github.com/sprout-graft/sprout-private sprout/sprout-private"
+# The private subsona holds the LIVE lock. Running without it would risk two
+# live instances (split-brain; see runbook §7), so this is mandatory — but
+# the script fetches it for you. Cloning a private repo may ask for your
+# GitHub credentials (the caregiver is a collaborator).
+if [ ! -d sprout/sprout-private/.git ]; then
+  echo "Cloning sprout-graft/sprout-private..."
+  git clone -q https://github.com/sprout-graft/sprout-private sprout/sprout-private \
+    || fail "could not clone sprout-graft/sprout-private (needs the caregiver's GitHub credentials)"
+else
+  git -C sprout/sprout-private pull -q --ff-only \
+    || fail "sprout/sprout-private/ has local changes or has diverged — resolve by hand"
+fi
 
 # --- 3. Build the images ----------------------------------------------------
 # -q keeps the output quiet; podman caches layers, so rebuilds are fast.

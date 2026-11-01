@@ -16,16 +16,21 @@ Everything needed to run the Sprout agent in a container: the images, the startu
 
 ## Host setup (caregiver)
 
+First time:
+
 ```sh
 git clone https://github.com/sona-coalition/sprout-harness
 cd sprout-harness
-git clone https://github.com/sprout-graft/sprout
-cd sprout
-git clone https://github.com/sprout-graft/sprout-private sprout-private
-cd ..
-cp runbook/env.example ~/.config/sprout/env   # then fill it in; chmod 600
+cp runbook/env.example .env   # then fill in the four values; chmod 600
+```
+
+Every time:
+
+```sh
 ./start.sh
 ```
+
+`start.sh` clones or pulls the content repositories itself — the nested clones below exist because it puts them there.
 
 The nested clones are plain clones, not submodules: each outer repository gitignores the nested one (`.gitignore` here covers `/sprout/`; `sprout` covers `/sprout-private/`), so git never confuses the levels. Container mounts are the two content clones only, and they **mirror the host layout** — `sprout-harness/sprout/` on the host is `/home/sprout/sprout` in the container, and `sprout-harness/sprout/sprout-private/` is `/home/sprout/sprout/sprout-private`. One rule, no translation: same path inside as outside.
 
