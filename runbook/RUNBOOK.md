@@ -123,7 +123,7 @@ Notes:
 
 Exactly one Sprout instance is live at a time, across every host — a Superconductor session counts as an instance exactly as a container run does. This generalizes the only-agent rule (§8) from the Superconductor project to Sprout as a whole.
 
-**Every instance takes the lock when it wakes and releases it when it stops.** A Superconductor session locks at wake and releases when the turn ends (its sandbox clone of the private repo standing in for the container's mount); a cut-off turn — e.g. an OpenRouter 402 — leaves a stale lock, which the 4-hour rule and the §10 override cover, exactly as a container crash does.
+**Every instance takes the lock when it wakes and releases it when it stops.** "Stops" means *stops being live*: a Superconductor conversation holds its lock across the whole conversation, not per turn — releasing between turns would reopen exactly the split-brain gap the lock exists to close. Release happens on explicit shutdown (the instance is told to switch off or stand down), by the 4-hour staleness rule when a conversation is abandoned (or a turn is cut off, e.g. by an OpenRouter 402), or by caregiver override (§10). A Superconductor session's sandbox clone of the private repo stands in for the container's mount.
 
 Why it is a rule and not a preference:
 

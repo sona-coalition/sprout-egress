@@ -32,6 +32,15 @@ RUN apt-get update \
 # The Pi coding agent itself, installed globally from npm.
 RUN npm install -g @earendil-works/pi-coding-agent
 
+# Pi configuration: default to the SAME model and thinking level Sprout uses
+# on Superconductor (moonshotai/kimi-k3, reasoning max), so the container
+# instance is the same mind, not just the same instructions. The apiKey value
+# is the literal string "$OPENROUTER_API_KEY" — pi expands it from the
+# environment at call time, so no secret is baked into the image.
+RUN mkdir -p /root/.pi/agent
+COPY pi-settings.json /root/.pi/agent/settings.json
+COPY pi-models.json /root/.pi/agent/models.json
+
 # Git identity: Sprout acts on GitHub as "sprout-graft", and its commits and
 # pull requests are recorded as sprout-graft <sprout-graft@omail.sh>.
 # Setting this system-wide in the image keeps that identity consistent

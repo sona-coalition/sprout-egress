@@ -1,0 +1,8 @@
+{
+  "providers": {
+    "openrouter": {
+      "apiKey": "$OPENROUTER_API_KEY",
+      "authHeader": true
+    }
+  }
+}
